@@ -44,9 +44,11 @@ GameObject:
   - component: {fileID: 8907654309794535892}
   - component: {fileID: 7591351421890252153}
   - component: {fileID: 5456357421975472624}
+  - component: {fileID: 3901818921594406044}
+  - component: {fileID: 1250389893678162584}
   m_Layer: 0
   m_Name: Main Camera
-  m_TagString: MainCamera
+  m_TagString: Player
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
@@ -150,8 +152,6 @@ MonoBehaviour:
   stopNaNs: 0
   taaSharpenStrength: 0.5
   TAAQuality: 1
-  taaSharpenMode: 0
-  taaRingingReduction: 0
   taaHistorySharpening: 0.35
   taaAntiFlicker: 0.5
   taaMotionVectorRejection: 0
@@ -185,13 +185,6 @@ MonoBehaviour:
   deepLearningSuperSamplingUseCustomAttributes: 0
   deepLearningSuperSamplingUseOptimalSettings: 1
   deepLearningSuperSamplingSharpening: 0
-  allowFidelityFX2SuperResolution: 1
-  fidelityFX2SuperResolutionUseCustomQualitySettings: 0
-  fidelityFX2SuperResolutionQuality: 0
-  fidelityFX2SuperResolutionUseCustomAttributes: 0
-  fidelityFX2SuperResolutionUseOptimalSettings: 1
-  fidelityFX2SuperResolutionEnableSharpening: 0
-  fidelityFX2SuperResolutionSharpening: 0
   fsrOverrideSharpness: 0
   fsrSharpness: 0.92
   exposureTarget: {fileID: 0}
@@ -209,7 +202,6 @@ MonoBehaviour:
     sssQualityMode: 0
     sssQualityLevel: 0
     sssCustomSampleBudget: 20
-    sssCustomDownsampleSteps: 0
     msaaMode: 9
     materialQuality: 0
   renderingPathCustomFrameSettingsOverrideMask:
@@ -264,6 +256,54 @@ MonoBehaviour:
       enableFptlForForwardOpaque: 0
       enableBigTilePrepass: 0
       isFptlEnabled: 0
+--- !u!135 &3901818921594406044
+SphereCollider:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1003716577994938648}
+  m_Material: {fileID: 0}
+  m_IncludeLayers:
+    serializedVersion: 2
+    m_Bits: 0
+  m_ExcludeLayers:
+    serializedVersion: 2
+    m_Bits: 0
+  m_LayerOverridePriority: 0
+  m_IsTrigger: 0
+  m_ProvidesContacts: 0
+  m_Enabled: 1
+  serializedVersion: 3
+  m_Radius: 0.25
+  m_Center: {x: 0, y: 0, z: 0}
+--- !u!54 &1250389893678162584
+Rigidbody:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1003716577994938648}
+  serializedVersion: 4
+  m_Mass: 1
+  m_Drag: 0
+  m_AngularDrag: 0.05
+  m_CenterOfMass: {x: 0, y: 0, z: 0}
+  m_InertiaTensor: {x: 1, y: 1, z: 1}
+  m_InertiaRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_IncludeLayers:
+    serializedVersion: 2
+    m_Bits: 0
+  m_ExcludeLayers:
+    serializedVersion: 2
+    m_Bits: 0
+  m_ImplicitCom: 1
+  m_ImplicitTensor: 1
+  m_UseGravity: 0
+  m_IsKinematic: 1
+  m_Interpolate: 0
+  m_Constraints: 0
+  m_CollisionDetection: 0
 --- !u!1 &1981394242552633987
 GameObject:
   m_ObjectHideFlags: 0
@@ -277,7 +317,7 @@ GameObject:
   - component: {fileID: 1391424023656467450}
   m_Layer: 0
   m_Name: PlayerContainer
-  m_TagString: Player
+  m_TagString: GameController
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
@@ -315,16 +355,17 @@ MonoBehaviour:
   CameraRig: {fileID: 7860599986461144367}
   CameraPitch: {fileID: 1417580760642883815}
   cameraObject: {fileID: 8907654309794535892}
-  slideSpeed: 100
   RunSpeed: 150
-  DashSpeed: 200
-  jumpType: 0
-  JumpPower: 5
+  jumpType: 1
+  JumpPower: 7
+  SlopeSlideSpeed: 100
   GroundPoundPower: 20
   DashPower: 50
+  SlidePower: 30
   AirControll: 0.25
   AirTimeMultiplier: 0.5
   velocity: {x: 0, y: 0, z: 0}
+  targetHeight: 1.8
 --- !u!143 &1391424023656467450
 CharacterController:
   m_ObjectHideFlags: 0
@@ -340,12 +381,13 @@ CharacterController:
     serializedVersion: 2
     m_Bits: 0
   m_LayerOverridePriority: 0
+  m_IsTrigger: 0
   m_ProvidesContacts: 0
   m_Enabled: 1
   serializedVersion: 3
   m_Height: 2
   m_Radius: 0.25
-  m_SlopeLimit: 45
+  m_SlopeLimit: 75
   m_StepOffset: 0.3
   m_SkinWidth: 0.08
   m_MinMoveDistance: 0.001

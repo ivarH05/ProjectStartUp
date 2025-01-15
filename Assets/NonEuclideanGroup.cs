@@ -3,13 +3,14 @@ using UnityEngine;
 public class NonEuclideanGroup : MonoBehaviour
 {
     [Header("Setup")]
+    public Vector3 testvar;
     public Transform Portal1;
     public Transform Portal2;
 
     public PortalTeleporter Teleporter1;
     public PortalTeleporter Teleporter2;
 
-    public Transform Camera;
+    public new Camera camera;
 
     [Header("Settings")]
 
@@ -26,7 +27,6 @@ public class NonEuclideanGroup : MonoBehaviour
     {
         player = PlayerController._singleton;
     }
-
     void Update()
     {
         LastTeleport += Time.deltaTime;
@@ -37,12 +37,19 @@ public class NonEuclideanGroup : MonoBehaviour
 
         EnableClosest();
 
-        Transform playerCam = PlayerController.playerCamera.transform;
-        Vector3 newPos = TransformPoint(playerCam.position);
-        Vector3 newRot = TransformEuler(playerCam.eulerAngles);
+        Transform current = switched ? Portal2 : Portal1;
+        Transform other = switched ? Portal1 : Portal2;
+        Transform playerCamera = player.cameraObject.transform;
+        Transform portalCamera = camera.transform;
 
-        Camera.position = newPos;
-        Camera.eulerAngles = newRot;
+        Vector3 relativePosition = current.InverseTransformPoint(playerCamera.position);
+        Quaternion relativeRotation = Quaternion.Inverse(current.rotation) * playerCamera.rotation;
+
+        Vector3 portalCameraPosition = other.TransformPoint(relativePosition);
+        Quaternion portalCameraRotation = other.rotation * relativeRotation;
+
+        portalCamera.position = portalCameraPosition;
+        portalCamera.rotation = portalCameraRotation;
     }
 
     public void SwitchToClosest()
@@ -75,42 +82,23 @@ public class NonEuclideanGroup : MonoBehaviour
         if (active == newValue)
             return;
         else
-            Camera.gameObject.SetActive(newValue);
+            camera.gameObject.SetActive(newValue);
         active = newValue;
     }
 
     public void Teleport()
     {
-        Transform playerTransform = player.transform;
-        Transform camTransform = player.cameraObject.transform;
-
-        Vector3 newPos = TransformPoint(playerTransform.position);
-        Vector3 newRot = TransformEuler(camTransform.eulerAngles);
-        Quaternion rotation = Quaternion.Euler(newRot - camTransform.eulerAngles);
-
-        player.velocity = rotation * player.velocity;
-        player.SetPosition(newPos);
-        player.SetCameraRotation(newRot + new Vector3(0, 180, 0));
-
-        switched = !switched;
-        LastTeleport = 0;
-    }
-
-    Vector3 TransformPoint(Vector3 point)
-    {
         Transform current = switched ? Portal2 : Portal1;
         Transform other = switched ? Portal1 : Portal2;
-        Vector3 localPos = current.InverseTransformPoint(point);
 
-        return other.TransformPoint(localPos);
-    }
+        player.SetCameraRotation(camera.transform.eulerAngles + new Vector3(0, 180, 0));
+        player.SetPosition(camera.transform.position - player.CameraRig.localPosition);
 
-    Vector3 TransformEuler(Vector3 euler)
-    {
-        Transform current = switched ? Portal2 : Portal1;
-        Transform other = switched ? Portal1 : Portal2;
-        Vector3 localRot = euler - current.eulerAngles;
+        Vector3 localVelocity = current.InverseTransformDirection(player.velocity);
+        Vector3 newVelocity = other.TransformDirection(localVelocity);
 
-        return localRot + other.eulerAngles;
+        newVelocity.y *= 0.5f;
+
+        player.velocity = newVelocity;
     }
 }

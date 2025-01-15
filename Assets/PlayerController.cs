@@ -1,3 +1,4 @@
+using System.Data;
 using UnityEngine;
 public enum MovementType { SLIDING, RUNNING, DASHING, JUMPING, FALLING }
 public enum JumpType { NONE, DOUBLE, AIRTIME }
@@ -23,6 +24,7 @@ public class PlayerController : MonoBehaviour
 
     [Space()]
     public float JumpPower = 6f;
+    public float SlopeSlideSpeed = 1f;
     public float GroundPoundPower = 20f;
     public float DashPower = 30f;
     public float SlidePower = 30f;
@@ -40,6 +42,8 @@ public class PlayerController : MonoBehaviour
     private float lastDashInput = 1;
 
     private int jumpCount;
+
+    private Vector3 groundNormal;
     
     void Start()
     {
@@ -64,7 +68,7 @@ public class PlayerController : MonoBehaviour
 
         // for debugging purposes
         // <<<<
-        if (Input.GetKey(KeyCode.LeftAlt))
+        if (Input.GetKey(KeyCode.Mouse4))
             Application.targetFrameRate = 5;
         else
             Application.targetFrameRate = -1;
@@ -90,6 +94,8 @@ public class PlayerController : MonoBehaviour
 
     private void ProcessMovement()
     {
+        CalculateGroundNormal();
+
         Vector2 input = GetMovementInput();
         Vector3 movement = input.x * CameraRig.right + input.y * CameraRig.forward;
         movement *= RunSpeed * Time.fixedDeltaTime;
@@ -114,21 +120,31 @@ public class PlayerController : MonoBehaviour
             if (lastGrounded == 0 && lastDashInput > 0.25f)
                 movementType = MovementType.RUNNING;
         }
-        else if(lastSlideInput > 0.8f)
+        else if(lastSlideInput > 0.8f || lastGrounded > 0.1f)
+        {
+            velocity.y = velocity.y * 0.2f;
             movementType = MovementType.RUNNING;
+        }
     }
 
     private void ProcessAirMovement(Vector3 movement)
     {
+        if (movementType == MovementType.SLIDING)
+        {
+            movement *= AirControll;
+            movement += GetGravitationForce() * 0.01f;
+            velocity += movement;
+
+            FrictionForce(Mathf.Pow(Time.fixedDeltaTime, 1.1f - AirControll));
+            return;
+        }
+
         movement *= AirControll;
         if (lastDashInput > 0.1)
             movement += GetGravitationForce();
         velocity += movement;
 
         FrictionForce(Mathf.Pow(Time.fixedDeltaTime, 1.1f - AirControll));
-
-        if (movementType == MovementType.SLIDING)
-            return;
 
         if (lastDashInput > 0.25f && Vector3.Dot(Physics.gravity, velocity) > 0)
             movementType = MovementType.FALLING;
@@ -144,15 +160,26 @@ public class PlayerController : MonoBehaviour
 
     private void ProcessGroundMovement(Vector3 movement)
     {
-        velocity += movement;
+        Vector3 movementOverNormal = movement - Vector3.Dot(movement, groundNormal) * groundNormal;
+        velocity += movementOverNormal.normalized;
 
-        FrictionForce(Mathf.Pow(Time.fixedDeltaTime, 0.5f));
+        FrictionForce(Mathf.Pow(Time.fixedDeltaTime, 0.5f), true);
 
         if(movementType == MovementType.RUNNING)
         {
             jumpCount = 0;
             if (lastSlideInput < 0.1f)
                 Slide();
+        }
+        ProcessSlopes();
+    }
+
+    private void ProcessSlopes()
+    {
+        if (Vector3.Angle(groundNormal, Vector3.up) > 60)
+        {
+            Vector3 projection = Vector3.down - Vector3.Dot(Vector3.down, groundNormal) * groundNormal;
+            velocity += projection.normalized * Time.fixedDeltaTime * SlopeSlideSpeed;
         }
     }
 
@@ -175,6 +202,10 @@ public class PlayerController : MonoBehaviour
         float yMovement = Input.GetAxis("Mouse Y") * Settings.MouseSensitivity;
 
         RotateCamera(new Vector3(-yMovement, xMovement, 0));
+
+        Quaternion camEuler = cameraObject.transform.localRotation;
+
+        cameraObject.transform.localRotation = Quaternion.Lerp(camEuler, Quaternion.identity, Time.deltaTime * 5);
     }
 
     ////////// Private methods
@@ -187,12 +218,17 @@ public class PlayerController : MonoBehaviour
         CameraRig.localPosition = new Vector3(0, height / 2 + 0.7f, 0);
     }
 
-    private void FrictionForce(float friction)
+    private void FrictionForce(float friction, bool Yfriction = false)
     {
-        Vector3 XZ = new Vector3(velocity.x, 0, velocity.z);
-        XZ = Vector3.Lerp(XZ, Vector3.zero, friction);
+        if(Yfriction)
+            velocity = Vector3.Lerp(velocity, Vector3.zero, friction);
+        else
+        {
+            Vector3 XZ = new Vector3(velocity.x, 0, velocity.z);
+            XZ = Vector3.Lerp(XZ, Vector3.zero, friction);
 
-        velocity = new Vector3(XZ.x, velocity.y, XZ.z);
+            velocity = new Vector3(XZ.x, velocity.y, XZ.z);
+        }
     }
 
     public bool IsGrounded()
@@ -211,7 +247,11 @@ public class PlayerController : MonoBehaviour
 
         Vector3 camVector = cameraObject.transform.forward;
         Vector3 direction = new Vector3(camVector.x, 0, camVector.z).normalized;
-        velocity = direction * SlidePower;
+
+        Vector3 projection = direction - Vector3.Dot(direction, groundNormal) * groundNormal;
+        projection = projection.normalized + new Vector3(0, -0.1f, 0);
+
+        velocity = projection.normalized * SlidePower;
 
         targetHeight = 1;
     }
@@ -266,6 +306,38 @@ public class PlayerController : MonoBehaviour
         return float.MaxValue;
     }
 
+    Vector3[] offsets =
+    {
+        new Vector3(0.0f, 0.0f, 0.0f),
+        new Vector3(0.2f, 0.0f, 0.0f),
+        new Vector3(0.1f, 0.0f, 0.1f),
+        new Vector3(-0.2f, 0.0f, 0.0f),
+        new Vector3(-0.1f, 0.0f, 0.1f),
+        new Vector3(0.0f, 0.0f, 0.2f),
+        new Vector3(0.1f, 0.0f, -0.1f),
+        new Vector3(0.0f, 0.0f, -0.2f),
+        new Vector3(-0.1f, 0.0f, -0.1f),
+    };
+
+    private void CalculateGroundNormal()
+    {
+        Vector3 combinedNormal = new Vector3();
+        int count = 0;
+        for (int i = 0; i < offsets.Length; i++)
+        {
+            RaycastHit hit;
+            if (!Physics.Raycast(transform.position + offsets[i], Vector3.down, out hit, 0.1f))
+                continue;
+
+            count++;
+            combinedNormal += hit.normal;
+        }
+        if (count == 0)
+            groundNormal = Vector3.zero;
+        else
+            groundNormal = (combinedNormal / count).normalized;
+    }
+
     ////////// Public methods
     public void RotateCamera(Vector3 euler)
     {
@@ -278,6 +350,7 @@ public class PlayerController : MonoBehaviour
     {
         CameraPitch.localEulerAngles = new Vector3(euler.x, 0, 0);
         CameraRig.localEulerAngles = new Vector3(0, euler.y, 0);
+        cameraObject.transform.localEulerAngles = new Vector3(0, 0, euler.z);
     }
 
     public void SetPosition(Vector3 pos)
